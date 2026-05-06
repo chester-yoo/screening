@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>기업 스크리닝</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f0f4f8;--surface:#ffffff;--surface2:#f8fafc;--border:#e2e8f0;--border2:#cbd5e1;--accent:#2563eb;--accent2:#3b82f6;--accent3:rgba(37,99,235,.08);--green:#16a34a;--red:#dc2626;--text:#0f172a;--text2:#475569;--text3:#94a3b8;--mono:'IBM Plex Mono',monospace;--sans:'Noto Sans KR',sans-serif;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);height:100vh;overflow:hidden;}
+::-webkit-scrollbar{width:4px;height:4px;} ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:2px;} ::-webkit-scrollbar-track{background:transparent;}
+.app{display:flex;height:100vh;}
+.sidebar{width:310px;min-width:310px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;}
+.main{flex:1;display:flex;flex-direction:column;min-width:0;}
+.header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;background:var(--surface);flex-shrink:0;}
+.logo{font-family:var(--mono);font-size:11px;color:var(--accent2);letter-spacing:.1em;}
+.logo em{color:var(--text3);}
+.result-badge{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--text3);}
+.result-badge b{color:var(--accent);}
+.btn{padding:5px 10px;border-radius:5px;font-size:11px;font-weight:500;cursor:pointer;border:none;font-family:var(--sans);transition:all .15s;}
+.btn-primary{background:var(--accent);color:#fff;} .btn-primary:hover{background:var(--accent2);}
+.btn-ghost{background:transparent;color:var(--text2);border:1px solid var(--border2);} .btn-ghost:hover{border-color:var(--accent);color:var(--accent2);}
+.btn-sm{padding:3px 7px;font-size:10px;}
+
+/* SIDEBAR SECTIONS */
+.sb-top{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;flex-shrink:0;}
+.sb-title{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--text3);text-transform:uppercase;flex:1;}
+.fixed-filters{padding:10px 12px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.ff-label{font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:5px;}
+.chip-row{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;}
+.chip-row:last-child{margin-bottom:0;}
+.chip{padding:3px 8px;border-radius:4px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:11px;cursor:pointer;transition:all .15s;font-family:var(--sans);}
+.chip:hover{border-color:var(--accent);color:var(--accent2);}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+.chip.excl-on{background:var(--red);border-color:var(--red);color:#fff;}
+
+/* DYNAMIC FILTERS */
+.dyn-filters{flex:1;overflow-y:auto;padding:8px 0 4px;}
+.dyn-empty{padding:18px 14px;text-align:center;color:var(--text3);font-size:11px;font-family:var(--mono);line-height:1.9;}
+.fc{margin:0 10px 5px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.fc-head{display:flex;align-items:center;padding:7px 10px;gap:6px;border-bottom:1px solid var(--border);}
+.fc-icon{font-size:12px;width:18px;text-align:center;}
+.fc-name{font-size:11px;color:var(--text2);flex:1;font-weight:500;}
+.fc-tag{font-size:9px;color:var(--text3);font-family:var(--mono);}
+.fc-remove{background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;line-height:1;padding:2px 4px;transition:color .15s;margin-left:2px;}
+.fc-remove:hover{color:var(--red);}
+.fc-body{padding:8px 10px;}
+.fc-range{display:grid;grid-template-columns:1fr 14px 1fr;gap:4px;align-items:center;}
+.fc-sep{text-align:center;color:var(--text3);font-size:11px;}
+.fc-input{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:5px;padding:5px 7px;color:var(--text);font-size:11px;font-family:var(--mono);outline:none;transition:border-color .15s;}
+.fc-input:focus{border-color:var(--accent);}
+.fc-unit{font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:3px;text-align:right;}
+.fc-toggle-row{display:flex;align-items:center;gap:8px;padding:3px 0;}
+.fc-toggle-label{font-size:11px;color:var(--text2);flex:1;}
+.toggle{position:relative;width:30px;height:17px;cursor:pointer;flex-shrink:0;}
+.toggle input{opacity:0;width:0;height:0;}
+.tog-sl{position:absolute;inset:0;background:var(--border2);border-radius:9px;transition:background .2s;}
+.tog-sl::after{content:'';position:absolute;left:3px;top:2.5px;width:12px;height:12px;background:var(--text3);border-radius:50%;transition:all .2s;}
+.toggle input:checked+.tog-sl{background:var(--accent);}
+.toggle input:checked+.tog-sl::after{left:15px;background:#fff;}
+
+.add-filter-btn{margin:0 10px 4px;border:1px dashed var(--border2);border-radius:8px;padding:8px;text-align:center;cursor:pointer;color:var(--text3);font-size:11px;transition:all .15s;background:transparent;flex-shrink:0;}
+.add-filter-btn:hover{border-color:var(--accent);color:var(--accent2);background:var(--accent3);}
+.sb-bottom{padding:10px 12px;border-top:1px solid var(--border);display:flex;gap:6px;flex-shrink:0;}
+
+/* ACTIVE TAGS */
+.active-tags{padding:5px 12px;border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:4px;min-height:30px;align-items:center;flex-shrink:0;background:var(--surface);}
+.atag{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;background:#dbeafe;border:1px solid #bfdbfe;border-radius:4px;font-size:10px;color:#1d4ed8;font-family:var(--mono);}
+.atag button{background:none;border:none;color:#2563eb;cursor:pointer;font-size:12px;line-height:1;padding:0;}
+.atag-empty{font-size:10px;color:var(--text3);font-family:var(--mono);}
+
+/* TOOLBAR */
+.toolbar{padding:7px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;background:var(--surface);flex-shrink:0;}
+.search-wrap{position:relative;flex:0 0 200px;}
+.search-wrap input{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:5px 8px 5px 26px;color:var(--text);font-size:12px;outline:none;font-family:var(--sans);}
+.search-wrap input:focus{border-color:var(--accent);}
+.s-icon{position:absolute;left:8px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:11px;}
+.col-bar{display:flex;flex-wrap:wrap;gap:3px;flex:1;}
+.ccol{padding:2px 7px;border-radius:4px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:10px;cursor:pointer;font-family:var(--mono);transition:all .15s;}
+.ccol.on{background:var(--accent3);border-color:var(--accent);color:var(--accent2);}
+
+/* TABLE */
+.table-wrap{flex:1;overflow:auto;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+thead{position:sticky;top:0;z-index:10;}
+thead tr{background:var(--surface);}
+th{padding:7px 10px;text-align:right;font-size:10px;font-weight:600;color:var(--text3);font-family:var(--mono);border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;}
+th.left,td.left{text-align:left;}
+th:hover{color:var(--accent2);}
+.sa::after{content:' ↑';color:var(--accent);} .sd::after{content:' ↓';color:var(--accent);}
+tbody tr{border-bottom:1px solid #e9eef5;cursor:pointer;transition:background .1s;}
+tbody tr:hover{background:rgba(37,99,235,.04);}
+td{padding:6px 10px;text-align:right;white-space:nowrap;}
+.td-name{font-weight:500;max-width:130px;overflow:hidden;text-overflow:ellipsis;display:block;}
+.td-code{font-family:var(--mono);font-size:10px;color:var(--text3);}
+.badge{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;font-family:var(--mono);}
+.b-semi{background:#dbeafe;color:#1d4ed8;border:1px solid #bfdbfe;}
+.b-robot{background:#dcfce7;color:#15803d;border:1px solid #bbf7d0;}
+.b-bat{background:#fef9c3;color:#a16207;border:1px solid #fde68a;}
+.b-kospi{background:#f1f5f9;color:#475569;border:1px solid #e2e8f0;}
+.b-kosdaq{background:#ede9fe;color:#6d28d9;border:1px solid #ddd6fe;}
+.b-etc{background:#f8fafc;color:#94a3b8;border:1px solid #e2e8f0;}
+.num{font-family:var(--mono);font-size:11px;}
+.pos{color:var(--green);} .neg{color:var(--red);} .neu{color:var(--text2);}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;height:200px;color:var(--text3);gap:8px;font-size:12px;}
+.footer{padding:6px 12px;border-top:1px solid var(--border);background:var(--surface);font-size:10px;color:var(--text3);font-family:var(--mono);display:flex;align-items:center;flex-shrink:0;}
+
+/* MODALS */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;align-items:center;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:12px;width:460px;max-height:78vh;display:flex;flex-direction:column;overflow:hidden;}
+.modal-head{padding:13px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;flex-shrink:0;}
+.modal-title{font-size:13px;font-weight:700;color:var(--text);}
+.modal-close{margin-left:auto;background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer;}
+.modal-body{overflow-y:auto;flex:1;}
+.fp-search{padding:9px 12px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.fp-search input{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:6px 10px;color:var(--text);font-size:12px;outline:none;font-family:var(--sans);}
+.fp-search input:focus{border-color:var(--accent);}
+.fp-group-name{padding:7px 14px 4px;font-size:10px;color:var(--text3);font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;background:rgba(255,255,255,.02);border-bottom:1px solid var(--border);}
+.fp-item{display:flex;align-items:center;padding:8px 14px;gap:10px;border-bottom:1px solid rgba(35,43,62,.4);}
+.fp-item:hover:not(.added){background:var(--accent3);}
+.fp-item.added{opacity:.4;}
+.fp-item-info{flex:1;}
+.fp-item-name{font-size:12px;color:var(--text);}
+.fp-item-desc{font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:1px;}
+.fp-add-btn{padding:3px 10px;border-radius:4px;background:var(--accent3);border:1px solid rgba(59,130,246,.3);color:var(--accent2);font-size:10px;cursor:pointer;white-space:nowrap;transition:all .15s;}
+.fp-add-btn:hover{background:var(--accent);color:#fff;}
+.fp-item.added .fp-add-btn{background:var(--border);color:var(--text3);border-color:var(--border2);cursor:default;pointer-events:none;}
+.preset-list-wrap{padding:10px 14px;display:flex;flex-direction:column;gap:8px;}
+.preset-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;}
+.preset-card-name{font-weight:600;font-size:13px;color:var(--text);margin-bottom:5px;}
+.preset-card-desc{font-size:10px;color:var(--text2);font-family:var(--mono);line-height:1.7;white-space:pre-line;margin-bottom:8px;}
+.preset-card-row{display:flex;gap:6px;}
+.psave-form{padding:14px;display:flex;flex-direction:column;gap:10px;}
+.psave-form input{background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;outline:none;font-family:var(--sans);}
+.psave-form input:focus{border-color:var(--accent);}
+.psave-preview{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:10px;color:var(--text2);font-family:var(--mono);line-height:1.8;max-height:140px;overflow-y:auto;white-space:pre-line;}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1e293b;border:1px solid #334155;color:#93c5fd;padding:7px 16px;border-radius:20px;font-size:11px;font-family:var(--mono);z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="sb-top">
+    <span class="sb-title">스크리닝 필터</span>
+    <button class="btn btn-ghost btn-sm" onclick="openModal('preset-load')">📂 불러오기</button>
+    <button class="btn btn-ghost btn-sm" onclick="openModal('preset-save')">💾 저장</button>
+  </div>
+  <div class="fixed-filters">
+    <div class="ff-label">산업 분류</div>
+    <div class="chip-row">
+      <button class="chip on" data-f="sector" data-v="반도체" onclick="toggleChip(this)">반도체</button>
+      <button class="chip on" data-f="sector" data-v="로봇" onclick="toggleChip(this)">로봇</button>
+      <button class="chip on" data-f="sector" data-v="이차전지" onclick="toggleChip(this)">이차전지</button>
+    </div>
+    <div class="ff-label">시장 구분</div>
+    <div class="chip-row">
+      <button class="chip on" data-f="market" data-v="코스피" onclick="toggleChip(this)">코스피</button>
+      <button class="chip on" data-f="market" data-v="코스닥" onclick="toggleChip(this)">코스닥</button>
+      <button class="chip on" data-f="market" data-v="외감" onclick="toggleChip(this)">외감</button>
+      <button class="chip on" data-f="market" data-v="K-OTC" onclick="toggleChip(this)">K-OTC</button>
+      <button class="chip on" data-f="market" data-v="코넥스" onclick="toggleChip(this)">코넥스</button>
+    </div>
+    <div class="ff-label">제외 대상</div>
+    <div class="chip-row">
+      <button class="chip excl-on" data-f="excl" data-v="대기업" onclick="toggleChip(this)">대기업</button>
+      <button class="chip excl-on" data-f="excl" data-v="유한회사" onclick="toggleChip(this)">유한회사</button>
+      <button class="chip excl-on" data-f="excl" data-v="외국계" onclick="toggleChip(this)">외국계</button>
+      <button class="chip excl-on" data-f="excl" data-v="FI 투자 유치 이력" onclick="toggleChip(this)">FI투자유치</button>
+    </div>
+  </div>
+  <div class="dyn-filters" id="dynFilters">
+    <div class="dyn-empty" id="dynEmpty">아래 버튼으로 원하는<br>필터 조건을 추가하세요<br><br>매출·영업이익·OPM·EBITDA<br>자산·자본·부채비율·순이익 등<br>연도별로 자유롭게 선택 가능</div>
+  </div>
+  <div class="add-filter-btn" onclick="openModal('filter-picker')">＋ 필터 조건 추가 / 제거</div>
+  <div class="sb-bottom">
+    <button class="btn btn-ghost" style="flex:1" onclick="resetAll()">초기화</button>
+    <button class="btn btn-primary" style="flex:2" onclick="run()">🔍 스크리닝</button>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="header">
+    <span class="logo">Corp<em>·</em>Screen <em>/</em> 기업 스크리닝</span>
+    <div class="result-badge">결과 <b id="rcnt">—</b> / 960개</div>
+  </div>
+  <div class="active-tags" id="activeTags"><span class="atag-empty">적용된 조건 없음</span></div>
+  <div class="toolbar">
+    <div class="search-wrap"><span class="s-icon">🔍</span><input type="text" id="searchInput" placeholder="기업명 / 업체코드..." oninput="run()"></div>
+    <div class="col-bar" id="colBar"></div>
+  </div>
+  <div class="table-wrap"><table><thead id="thead"></thead><tbody id="tbody"></tbody></table>
+    <div class="empty-state" id="emptyState" style="display:none"><div style="font-size:28px;opacity:.3">📭</div><div>조건에 맞는 기업이 없습니다</div></div>
+  </div>
+  <div class="footer"><span id="footerTxt">로딩 중...</span><span style="margin-left:auto">단위: 백만원 | 비율은 소수점(0.1=10%)</span></div>
+</div>
+</div>
+
+<!-- FILTER PICKER MODAL -->
+<div class="modal-overlay" id="modal-filter-picker">
+  <div class="modal">
+    <div class="modal-head"><span class="modal-title">필터 조건 추가 / 제거</span><button class="modal-close" onclick="closeModal('filter-picker')">✕</button></div>
+    <div class="fp-search"><input type="text" id="fp-q" placeholder="검색 (예: 매출, OPM, 2025...)" oninput="renderPicker()"></div>
+    <div class="modal-body" id="fp-body"></div>
+  </div>
+</div>
+
+<!-- PRESET SAVE MODAL -->
+<div class="modal-overlay" id="modal-preset-save">
+  <div class="modal" style="width:420px;">
+    <div class="modal-head"><span class="modal-title">💾 현재 필터 저장</span><button class="modal-close" onclick="closeModal('preset-save')">✕</button></div>
+    <div class="modal-body"><div class="psave-form">
+      <div style="font-size:10px;color:var(--text3);font-family:var(--mono);">현재 적용 조건</div>
+      <div class="psave-preview" id="save-preview"></div>
+      <input type="text" id="preset-name-input" placeholder="프리셋 이름 입력..." onkeydown="if(event.key==='Enter')doSavePreset()">
+      <button class="btn btn-primary" onclick="doSavePreset()">저장하기</button>
+    </div></div>
+  </div>
+</div>
+
+<!-- PRESET LOAD MODAL -->
+<div class="modal-overlay" id="modal-preset-load">
+  <div class="modal" style="width:440px;">
+    <div class="modal-head"><span class="modal-title">📂 프리셋 불러오기</span><button class="modal-close" onclick="closeModal('preset-load')">✕</button></div>
+    <div class="modal-body"><div class="preset-list-wrap" id="preset-list"></div></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script>
+// ══════════════════════════════════════════════
+// DATA (inserted below)
+// ══════════════════════════════════════════════
+let RAW = [];
+
+// ══════════════════════════════════════════════
+// FILTER FIELD CATALOG
+// 각 항목: { id, name, group, icon, field, type, unit, pct, options }
+// type: 'range' | 'toggle' | 'toggle_multi'
+// pct: true면 입력값 ÷ 100해서 비교 (OPM 등)
+// ══════════════════════════════════════════════
+const CATALOG = [
+  // ─── 매출 ───
+  {id:'rev22',    name:'2022 매출',       group:'매출',   icon:'📊', field:'22매출',    type:'range', unit:'백만원'},
+  {id:'rev23',    name:'2023 매출',       group:'매출',   icon:'📊', field:'23매출',    type:'range', unit:'백만원'},
+  {id:'rev24',    name:'2024 매출',       group:'매출',   icon:'📊', field:'24매출',    type:'range', unit:'백만원'},
+  {id:'rev25',    name:'2025 매출',       group:'매출',   icon:'📊', field:'25매출',    type:'range', unit:'백만원'},
+  {id:'revAvg',   name:'3개년 평균 매출', group:'매출',   icon:'📊', field:'AVG매출',   type:'range', unit:'백만원'},
+  {id:'revGrow',  name:'매출 성장률 22→24', group:'매출', icon:'📈', field:'매출성장률', type:'range', unit:'%', pct:true},
+  {id:'opPos22',  name:'2022 매출 흑자',  group:'매출',   icon:'✅', field:'22매출',    type:'toggle', op:'>0'},
+  {id:'opPos23',  name:'2023 매출 흑자',  group:'매출',   icon:'✅', field:'23매출',    type:'toggle', op:'>0'},
+  // ─── 영업이익 ───
+  {id:'op22',     name:'2022 영업이익',   group:'영업이익', icon:'💹', field:'22영업이익', type:'range', unit:'백만원'},
+  {id:'op23',     name:'2023 영업이익',   group:'영업이익', icon:'💹', field:'23영업이익', type:'range', unit:'백만원'},
+  {id:'op24',     name:'2024 영업이익',   group:'영업이익', icon:'💹', field:'24영업이익', type:'range', unit:'백만원'},
+  {id:'op25',     name:'2025 영업이익',   group:'영업이익', icon:'💹', field:'25영업이익', type:'range', unit:'백만원'},
+  {id:'opAvg',    name:'3개년 평균 영업이익', group:'영업이익', icon:'💹', field:'AVG영업이익', type:'range', unit:'백만원'},
+  {id:'opPos24',  name:'2024 영업이익 흑자', group:'영업이익', icon:'✅', field:'24영업이익', type:'toggle', op:'>0'},
+  {id:'opAll',    name:'3개년 연속 영업이익 흑자', group:'영업이익', icon:'✅', type:'toggle_multi', fields:['22영업이익','23영업이익','24영업이익'], op:'>0'},
+  {id:'opAll4',   name:'4개년 연속 영업이익 흑자', group:'영업이익', icon:'✅', type:'toggle_multi', fields:['22영업이익','23영업이익','24영업이익','25영업이익'], op:'>0'},
+  // ─── OPM ───
+  {id:'opm22',    name:'2022 OPM',        group:'OPM',  icon:'📉', field:'22OPM',    type:'range', unit:'%', pct:true},
+  {id:'opm23',    name:'2023 OPM',        group:'OPM',  icon:'📉', field:'23OPM',    type:'range', unit:'%', pct:true},
+  {id:'opm24',    name:'2024 OPM',        group:'OPM',  icon:'📉', field:'24OPM',    type:'range', unit:'%', pct:true},
+  {id:'opm25',    name:'2025 OPM',        group:'OPM',  icon:'📉', field:'25OPM',    type:'range', unit:'%', pct:true},
+  // ─── 순이익 ───
+  {id:'ni22',     name:'2022 당기순이익', group:'순이익', icon:'💰', field:'22순이익', type:'range', unit:'백만원'},
+  {id:'ni23',     name:'2023 당기순이익', group:'순이익', icon:'💰', field:'23순이익', type:'range', unit:'백만원'},
+  {id:'ni24',     name:'2024 당기순이익', group:'순이익', icon:'💰', field:'24순이익', type:'range', unit:'백만원'},
+  {id:'ni25',     name:'2025 당기순이익', group:'순이익', icon:'💰', field:'25순이익', type:'range', unit:'백만원'},
+  {id:'nim24',    name:'2024 순이익률',   group:'순이익', icon:'💰', field:'24순이익률', type:'range', unit:'%', pct:true},
+  {id:'nim23',    name:'2023 순이익률',   group:'순이익', icon:'💰', field:'23순이익률', type:'range', unit:'%', pct:true},
+  // ─── EBITDA ───
+  {id:'eb22',     name:'2022 EBITDA',     group:'EBITDA', icon:'🏦', field:'22EBITDA', type:'range', unit:'백만원'},
+  {id:'eb23',     name:'2023 EBITDA',     group:'EBITDA', icon:'🏦', field:'23EBITDA', type:'range', unit:'백만원'},
+  {id:'eb24',     name:'2024 EBITDA',     group:'EBITDA', icon:'🏦', field:'24EBITDA', type:'range', unit:'백만원'},
+  {id:'eb25',     name:'2025 EBITDA',     group:'EBITDA', icon:'🏦', field:'25EBITDA', type:'range', unit:'백만원'},
+  {id:'ebAvg',    name:'3개년 평균 EBITDA', group:'EBITDA', icon:'🏦', field:'AVG_EBITDA', type:'range', unit:'백만원'},
+  // ─── 자산·부채·자본 ───
+  {id:'ast22',    name:'2022 자산총계',   group:'B/S',  icon:'🏗', field:'22자산',    type:'range', unit:'백만원'},
+  {id:'ast23',    name:'2023 자산총계',   group:'B/S',  icon:'🏗', field:'23자산',    type:'range', unit:'백만원'},
+  {id:'ast24',    name:'2024 자산총계',   group:'B/S',  icon:'🏗', field:'24자산',    type:'range', unit:'백만원'},
+  {id:'ast25',    name:'2025 자산총계',   group:'B/S',  icon:'🏗', field:'25자산',    type:'range', unit:'백만원'},
+  {id:'eq22',     name:'2022 자본총계',   group:'B/S',  icon:'🏗', field:'22자본',    type:'range', unit:'백만원'},
+  {id:'eq23',     name:'2023 자본총계',   group:'B/S',  icon:'🏗', field:'23자본',    type:'range', unit:'백만원'},
+  {id:'eq24',     name:'2024 자본총계',   group:'B/S',  icon:'🏗', field:'24자본',    type:'range', unit:'백만원'},
+  {id:'eq25',     name:'2025 자본총계',   group:'B/S',  icon:'🏗', field:'25자본',    type:'range', unit:'백만원'},
+  {id:'dbt22',    name:'2022 부채비율',   group:'B/S',  icon:'⚖️', field:'22부채비율', type:'range', unit:'%', pct:true},
+  {id:'dbt23',    name:'2023 부채비율',   group:'B/S',  icon:'⚖️', field:'23부채비율', type:'range', unit:'%', pct:true},
+  {id:'dbt24',    name:'2024 부채비율',   group:'B/S',  icon:'⚖️', field:'24부채비율', type:'range', unit:'%', pct:true},
+  {id:'dbt25',    name:'2025 부채비율',   group:'B/S',  icon:'⚖️', field:'25부채비율', type:'range', unit:'%', pct:true},
+];
+
+// ══════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════
+const S = {
+  sectors: new Set(['반도체','로봇','이차전지']),
+  markets: new Set(['코스피','코스닥','외감','K-OTC','코넥스']),
+  excls:   new Set(['대기업','유한회사','외국계','FI 투자 유치 이력']),
+  active:  [],   // [{catalogId, minVal, maxVal, togVal}]
+};
+let sortCol='24매출', sortDir='desc', filtered=[];
+
+const TABLE_COLS = [
+  {key:'#',      label:'#',      fixed:true, visible:true},
+  {key:'산업분류',label:'분류',  fixed:true, visible:true},
+  {key:'종목명', label:'기업명', fixed:true, visible:true},
+  {key:'시장구분',label:'시장',  fixed:true, visible:true},
+  {key:'24매출', label:'24매출', fixed:false, visible:true},
+  {key:'23매출', label:'23매출', fixed:false, visible:false},
+  {key:'22매출', label:'22매출', fixed:false, visible:false},
+  {key:'25매출', label:'25매출', fixed:false, visible:false},
+  {key:'AVG매출',label:'평균매출', fixed:false, visible:true},
+  {key:'매출성장률',label:'성장률', fixed:false, visible:true},
+  {key:'24영업이익',label:'24영업익', fixed:false, visible:true},
+  {key:'25영업이익',label:'25영업익', fixed:false, visible:false},
+  {key:'AVG영업이익',label:'평균영업익', fixed:false, visible:false},
+  {key:'24OPM', label:'24OPM',  fixed:false, visible:true},
+  {key:'25OPM', label:'25OPM',  fixed:false, visible:false},
+  {key:'23OPM', label:'23OPM',  fixed:false, visible:false},
+  {key:'24EBITDA',label:'24EBITDA', fixed:false, visible:true},
+  {key:'24자산', label:'24자산', fixed:false, visible:true},
+  {key:'24자본', label:'24자본', fixed:false, visible:true},
+  {key:'24부채비율',label:'부채비율', fixed:false, visible:true},
+  {key:'24순이익',label:'24순이익', fixed:false, visible:false},
+  {key:'소속기업집단',label:'기업집단', fixed:false, visible:false},
+];
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+// ══════════════════════════════════════════════
+// GOOGLE SHEETS CSV LOADER
+// ══════════════════════════════════════════════
+const URLS = {
+  basic:   'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4303QD_6y5KNMYEicJpAYK60qzPpMjwrWJO9pbUygK3kDHUzzmGuZCOdnHqI1o8wFk3Hhde6u_biD/pub?gid=1204067738&single=true&output=csv',
+  finance: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4303QD_6y5KNMYEicJpAYK60qzPpMjwrWJO9pbUygK3kDHUzzmGuZCOdnHqI1o8wFk3Hhde6u_biD/pub?gid=217449903&single=true&output=csv',
+  summary: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4303QD_6y5KNMYEicJpAYK60qzPpMjwrWJO9pbUygK3kDHUzzmGuZCOdnHqI1o8wFk3Hhde6u_biD/pub?gid=140342369&single=true&output=csv',
+};
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const result = [];
+  // CSV 파싱 (쉼표+따옴표 처리)
+  function parseLine(line) {
+    const cells = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') { inQ = !inQ; }
+      else if (c === ',' && !inQ) { cells.push(cur.trim()); cur = ''; }
+      else { cur += c; }
+    }
+    cells.push(cur.trim());
+    return cells;
+  }
+  const headers = parseLine(lines[0]);
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const vals = parseLine(lines[i]);
+    const obj = {};
+    headers.forEach((h, j) => { obj[h] = vals[j] ?? ''; });
+    result.push(obj);
+  }
+  return result;
+}
+
+function toNum(v) {
+  if (v === '' || v == null) return null;
+  const n = parseFloat(String(v).replace(/,/g, ''));
+  return isNaN(n) ? null : n;
+}
+
+function showLoading(msg) {
+  document.getElementById('footerTxt').textContent = msg;
+  document.getElementById('rcnt').textContent = '…';
+}
+
+async function loadData() {
+  showLoading('⏳ 구글 시트에서 데이터 불러오는 중...');
+  try {
+    // 총괄 시트만 사용 (기본정보+재무정보 합산본)
+    const [sumRes, basicRes, finRes] = await Promise.all([
+      fetch(URLS.summary),
+      fetch(URLS.basic),
+      fetch(URLS.finance),
+    ]);
+    const [sumText, basicText, finText] = await Promise.all([
+      sumRes.text(), basicRes.text(), finRes.text()
+    ]);
+
+    const sumRows  = parseCSV(sumText);
+    const basicRows = parseCSV(basicText);
+    const finRows  = parseCSV(finText);
+
+    // 총괄 시트 파싱 — 헤더가 3행(0~2), 실제 데이터는 3행부터
+    // 총괄 컬럼 매핑
+    const COL = {
+      sector:  '산업분류',
+      code:    '업체코드',
+      name:    '종목명',
+      ceo:     '691010.대표자',
+      market:  '691035.시장구분',
+      group:   '691280.소속기업집단',
+      excl:    '제외대상(수기)',
+      product: '691230.주요상품',
+      ksic1:   '691430.KSIC-소분류(11차)',
+      ksic2:   '691440.KSIC-세분류(11차)',
+      rev22:   '22매출',  rev23:'23매출', rev24:'24매출', revAvg:'AVG(매출)',
+      op22:    '22영업이익', op23:'23영업이익', op24:'24영업이익', opAvg:'AVG(영업이익)',
+      eb22:    '22EBITDA', eb23:'23EBITDA', eb24:'24EBITDA', ebAvg:'AVG(EBITDA',
+      ast24:   '24자산', dbt24:'24부채', eq24:'24자본',
+      opm22:   '22OPM', opm23:'23OPM', opm24:'24OPM', debtR:'24부채비율',
+    };
+
+    // 기본정보에서 업체코드 → 행 매핑
+    const basicMap = {};
+    basicRows.forEach(r => {
+      const code = r['업체코드'] || r[Object.keys(r)[1]];
+      if (code) basicMap[code] = r;
+    });
+
+    // 재무정보에서 업체코드 → 행 매핑
+    const finMap = {};
+    finRows.forEach(r => {
+      const code = r['업체코드'] || r[Object.keys(r)[1]];
+      if (code) finMap[code] = r;
+    });
+
+    // 총괄 헤더 확인
+    const firstRow = sumRows[0] || {};
+    const keys = Object.keys(firstRow);
+    console.log('총괄 컬럼(첫 20개):', keys.slice(0, 20));
+
+    // 총괄 데이터 파싱
+    const parsed = [];
+    sumRows.forEach((r, idx) => {
+      // 업체코드가 없는 행(헤더/빈행) 스킵
+      const code = r['업체코드'] || r[keys[1]];
+      if (!code || code === '업체코드' || code === 'key 값' || code === '975') return;
+
+      const sector = r['산업분류'] || r[keys[0]] || '';
+      if (!['반도체','로봇','이차전지'].includes(sector)) return;
+
+      // 숫자 파싱 헬퍼
+      const n = key => toNum(r[key]);
+
+      // 재무정보 시트에서 추가 데이터 가져오기
+      const fin = finMap[code] || {};
+      const finKeys = Object.keys(fin);
+
+      // 재무정보 컬럼 찾기 (헤더가 복잡하므로 키워드로 매칭)
+      const findFin = keyword => {
+        const k = finKeys.find(k => k.includes(keyword));
+        return k ? toNum(fin[k]) : null;
+      };
+
+      const rev25 = findFin('2025/Annual S21000.수익') ?? findFin('2025') ?? null;
+      const op25  = findFin('2025/Annual S25000') ?? null;
+      const ni22  = findFin('2022/Annual S29000') ?? null;
+      const ni23  = findFin('2023/Annual S29000') ?? null;
+      const ni24  = findFin('2024/Annual S29000') ?? null;
+      const ni25  = findFin('2025/Annual S29000') ?? null;
+      const eb25  = findFin('2025/Annual S29700') ?? null;
+      const ast22 = findFin('2022/Annual S15000') ?? null;
+      const ast23 = findFin('2023/Annual S15000') ?? null;
+      const ast25 = findFin('2025/Annual S15000') ?? null;
+      const eq22  = findFin('2022/Annual S18900') ?? null;
+      const eq23  = findFin('2023/Annual S18900') ?? null;
+      const eq25  = findFin('2025/Annual S18900') ?? null;
+      const dbt22 = findFin('2022/Annual S18000') ?? null;
+      const dbt23 = findFin('2023/Annual S18000') ?? null;
+      const dbt25 = findFin('2025/Annual S18000') ?? null;
+
+      // 총괄 기본 수치
+      const rev22v = n('22매출'), rev23v = n('23매출'), rev24v = n('24매출');
+      const op22v  = n('22영업이익'), op23v = n('23영업이익'), op24v = n('24영업이익');
+      const eb22v  = n('22EBITDA'), eb23v = n('23EBITDA'), eb24v = n('24EBITDA');
+
+      // 파생 지표
+      const opm24v = n('24OPM'), opm23v = n('23OPM'), opm22v = n('22OPM');
+      const opm25v = (op25 != null && rev25 != null && rev25 !== 0) ? op25/rev25 : null;
+      const debtR24 = n('24부채비율');
+      const debtR22 = (dbt22 != null && eq22 != null && eq22 !== 0) ? dbt22/eq22 : null;
+      const debtR23 = (dbt23 != null && eq23 != null && eq23 !== 0) ? dbt23/eq23 : null;
+      const debtR25 = (dbt25 != null && eq25 != null && eq25 !== 0) ? dbt25/eq25 : null;
+      const growth = (rev24v != null && rev22v != null && rev22v !== 0) ? (rev24v - rev22v) / Math.abs(rev22v) : null;
+      const nim24 = (ni24 != null && rev24v != null && rev24v !== 0) ? ni24/rev24v : null;
+      const nim23 = (ni23 != null && rev23v != null && rev23v !== 0) ? ni23/rev23v : null;
+
+      parsed.push({
+        '산업분류': sector,
+        '업체코드': code,
+        '종목명':   r['종목명'] || r[keys[2]] || '',
+        '대표자':   r['691010.대표자'] || '',
+        '시장구분': r['691035.시장구분'] || r['시장구분'] || '',
+        '소속기업집단': r['691280.소속기업집단'] || r['소속기업집단'] || '',
+        '제외대상': r['제외대상(수기)'] || r['제외대상'] || '',
+        '주요상품': r['691230.주요상품'] || r['주요상품'] || '',
+        'KSIC소분류': r['691430.KSIC-소분류(11차)'] || '',
+        'KSIC세분류': r['691440.KSIC-세분류(11차)'] || '',
+        '22매출': rev22v, '23매출': rev23v, '24매출': rev24v, '25매출': rev25,
+        'AVG매출': n('AVG(매출)'),
+        '22영업이익': op22v, '23영업이익': op23v, '24영업이익': op24v, '25영업이익': op25,
+        'AVG영업이익': n('AVG(영업이익)'),
+        '22EBITDA': eb22v, '23EBITDA': eb23v, '24EBITDA': eb24v, '25EBITDA': eb25,
+        'AVG_EBITDA': n('AVG(EBITDA'),
+        '24자산': n('24자산'), '24부채': n('24부채'), '24자본': n('24자본'),
+        '22자산': ast22, '23자산': ast23, '25자산': ast25,
+        '22자본': eq22,  '23자본': eq23,  '25자본': eq25,
+        '22부채': dbt22, '23부채': dbt23, '25부채': dbt25,
+        '22OPM': opm22v, '23OPM': opm23v, '24OPM': opm24v, '25OPM': opm25v,
+        '22부채비율': debtR22, '23부채비율': debtR23, '24부채비율': debtR24, '25부채비율': debtR25,
+        '매출성장률': growth,
+        '22순이익': ni22, '23순이익': ni23, '24순이익': ni24, '25순이익': ni25,
+        '24순이익률': nim24, '23순이익률': nim23,
+      });
+    });
+
+    RAW = parsed;
+    console.log('로드 완료:', RAW.length, '개 기업');
+    buildColBar();
+    buildTableHead();
+    run();
+    document.getElementById('rcnt').textContent = RAW.length.toLocaleString();
+  } catch(e) {
+    console.error('데이터 로딩 실패:', e);
+    document.getElementById('footerTxt').textContent = '❌ 데이터 로딩 실패 — 구글 시트 공유 설정을 확인하세요';
+  }
+}
+
+function init(){
+  showLoading('⏳ 데이터 불러오는 중...');
+  loadData();
+}
+
+// ══════════════════════════════════════════════
+// CHIP TOGGLE (fixed filters)
+// ══════════════════════════════════════════════
+function toggleChip(btn){
+  const f=btn.dataset.f, v=btn.dataset.v;
+  if(f==='sector'){
+    if(S.sectors.has(v)){S.sectors.delete(v);btn.classList.remove('on');}
+    else{S.sectors.add(v);btn.classList.add('on');}
+  } else if(f==='market'){
+    if(S.markets.has(v)){S.markets.delete(v);btn.classList.remove('on');}
+    else{S.markets.add(v);btn.classList.add('on');}
+  } else if(f==='excl'){
+    if(S.excls.has(v)){S.excls.delete(v);btn.classList.remove('excl-on');}
+    else{S.excls.add(v);btn.classList.add('excl-on');}
+  }
+  run();
+}
+
+// ══════════════════════════════════════════════
+// DYNAMIC FILTER MANAGEMENT
+// ══════════════════════════════════════════════
+function addFilter(catId){
+  if(S.active.find(a=>a.catId===catId)) return;
+  S.active.push({catId, minVal:'', maxVal:'', togVal:false});
+  renderDynFilters();
+  run();
+}
+
+function removeFilter(catId){
+  S.active = S.active.filter(a=>a.catId!==catId);
+  renderDynFilters();
+  renderPicker();
+  run();
+}
+
+function renderDynFilters(){
+  const el = document.getElementById('dynFilters');
+  document.getElementById('dynEmpty').style.display = S.active.length ? 'none' : 'block';
+  // Remove old cards (keep dynEmpty)
+  el.querySelectorAll('.fc').forEach(e=>e.remove());
+
+  S.active.forEach(a=>{
+    const def = CATALOG.find(c=>c.id===a.catId);
+    if(!def) return;
+    const card = document.createElement('div');
+    card.className = 'fc';
+    card.id = 'fc-'+def.id;
+
+    let bodyHtml = '';
+    if(def.type==='range'){
+      bodyHtml = `
+        <div class="fc-body">
+          <div class="fc-range">
+            <input class="fc-input" type="number" placeholder="최소" value="${a.minVal}"
+              oninput="updateFilter('${def.id}','min',this.value)">
+            <div class="fc-sep">~</div>
+            <input class="fc-input" type="number" placeholder="최대" value="${a.maxVal}"
+              oninput="updateFilter('${def.id}','max',this.value)">
+          </div>
+          <div class="fc-unit">${def.unit||''} 기준${def.pct?' | 숫자 그대로 입력 (예: 10 = 10%)':''}</div>
+        </div>`;
+    } else if(def.type==='toggle'||def.type==='toggle_multi'){
+      const label = def.type==='toggle_multi'
+        ? `${def.fields.join(', ')} 모두 > 0`
+        : `${def.field} > 0`;
+      bodyHtml = `
+        <div class="fc-body">
+          <div class="fc-toggle-row">
+            <span class="fc-toggle-label">${label}</span>
+            <label class="toggle">
+              <input type="checkbox" ${a.togVal?'checked':''} onchange="updateFilter('${def.id}','tog',this.checked)">
+              <span class="tog-sl"></span>
+            </label>
+          </div>
+        </div>`;
+    }
+
+    card.innerHTML = `
+      <div class="fc-head">
+        <span class="fc-icon">${def.icon}</span>
+        <span class="fc-name">${def.name}</span>
+        <span class="fc-tag">${def.group}</span>
+        <button class="fc-remove" onclick="removeFilter('${def.id}')" title="필터 제거">✕</button>
+      </div>
+      ${bodyHtml}`;
+    el.appendChild(card);
+  });
+}
+
+function updateFilter(catId, key, val){
+  const a = S.active.find(x=>x.catId===catId);
+  if(!a) return;
+  if(key==='min') a.minVal=val;
+  else if(key==='max') a.maxVal=val;
+  else if(key==='tog') a.togVal=val;
+  run();
+}
+
+// ══════════════════════════════════════════════
+// FILTER PICKER MODAL
+// ══════════════════════════════════════════════
+function renderPicker(){
+  const q = (document.getElementById('fp-q')?.value||'').toLowerCase();
+  const body = document.getElementById('fp-body');
+  const activeIds = new Set(S.active.map(a=>a.catId));
+
+  // Group items
+  const groups = {};
+  CATALOG.forEach(def=>{
+    if(q && !def.name.toLowerCase().includes(q) && !def.group.toLowerCase().includes(q)) return;
+    if(!groups[def.group]) groups[def.group]=[];
+    groups[def.group].push(def);
+  });
+
+  let html = '';
+  Object.entries(groups).forEach(([gname, items])=>{
+    html += `<div class="fp-group-name">${gname}</div>`;
+    items.forEach(def=>{
+      const added = activeIds.has(def.id);
+      html += `<div class="fp-item${added?' added':''}" id="fpi-${def.id}">
+        <div class="fp-item-info">
+          <div class="fp-item-name">${def.icon} ${def.name}</div>
+          <div class="fp-item-desc">${def.type==='range'?`범위 입력 (${def.unit||''})`:def.type==='toggle'?'흑자 여부 토글':'조건 토글'}</div>
+        </div>
+        <button class="fp-add-btn" onclick="pickerToggle('${def.id}')">${added?'✓ 추가됨':'+ 추가'}</button>
+      </div>`;
+    });
+  });
+  body.innerHTML = html || '<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px;">검색 결과 없음</div>';
+}
+
+function pickerToggle(catId){
+  const activeIds = new Set(S.active.map(a=>a.catId));
+  if(activeIds.has(catId)){
+    removeFilter(catId);
+  } else {
+    addFilter(catId);
+  }
+  renderPicker();
+}
+
+// ══════════════════════════════════════════════
+// APPLY FILTERS & SORT
+// ══════════════════════════════════════════════
+function run(){
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+
+  filtered = RAW.filter(d=>{
+    if(!S.sectors.has(d['산업분류'])) return false;
+    if(!S.markets.has(d['시장구분'])) return false;
+    if(S.excls.has(d['제외대상'])) return false;
+    if(q && !(d['종목명']||'').toLowerCase().includes(q) && !(d['업체코드']||'').toLowerCase().includes(q)) return false;
+
+    for(const a of S.active){
+      const def = CATALOG.find(c=>c.id===a.catId);
+      if(!def) continue;
+
+      if(def.type==='range'){
+        const raw = d[def.field];
+        const v = (raw==null||raw===''||isNaN(raw)) ? null : Number(raw);
+        const minN = a.minVal===''||a.minVal==null ? null : (def.pct ? Number(a.minVal)/100 : Number(a.minVal));
+        const maxN = a.maxVal===''||a.maxVal==null ? null : (def.pct ? Number(a.maxVal)/100 : Number(a.maxVal));
+        if(minN!=null && (v==null || v<minN)) return false;
+        if(maxN!=null && (v==null || v>maxN)) return false;
+      } else if(def.type==='toggle' && a.togVal){
+        const v = Number(d[def.field]);
+        if(isNaN(v)||v<=0) return false;
+      } else if(def.type==='toggle_multi' && a.togVal){
+        for(const f of def.fields){
+          const v = Number(d[f]);
+          if(isNaN(v)||v<=0) return false;
+        }
+      }
+    }
+    return true;
+  });
+
+  filtered.sort((a,b)=>{
+    let av=a[sortCol], bv=b[sortCol];
+    if(av==null&&bv==null) return 0;
+    if(av==null) return 1; if(bv==null) return -1;
+    if(typeof av==='string') return sortDir==='asc'?av.localeCompare(bv,'ko'):bv.localeCompare(av,'ko');
+    return sortDir==='asc'?av-bv:bv-av;
+  });
+
+  renderTable();
+  renderActiveTags();
+  document.getElementById('rcnt').textContent=filtered.length.toLocaleString();
+  document.getElementById('footerTxt').textContent=`총 ${filtered.length.toLocaleString()}개 기업 표시 (전체 ${RAW.length.toLocaleString()}개)`;
+}
+
+// ══════════════════════════════════════════════
+// TABLE
+// ══════════════════════════════════════════════
+function buildColBar(){
+  const bar=document.getElementById('colBar');
+  bar.innerHTML='';
+  TABLE_COLS.filter(c=>!c.fixed).forEach(c=>{
+    const b=document.createElement('button');
+    b.className='ccol'+(c.visible?' on':'');
+    b.textContent=c.label;
+    b.onclick=()=>{c.visible=!c.visible;b.classList.toggle('on',c.visible);buildTableHead();renderTable();};
+    bar.appendChild(b);
+  });
+}
+
+function buildTableHead(){
+  const vis=TABLE_COLS.filter(c=>c.visible);
+  document.getElementById('thead').innerHTML='<tr>'+vis.map(c=>{
+    const sc=sortCol===c.key?(sortDir==='asc'?' sa':' sd'):'';
+    const isLeft=c.fixed||c.key==='산업분류'||c.key==='시장구분';
+    return `<th class="${isLeft?'left':''}${sc}" onclick="setSort('${c.key}')">${c.label}</th>`;
+  }).join('')+'</tr>';
+}
+
+function setSort(col){
+  if(sortCol===col) sortDir=sortDir==='asc'?'desc':'asc';
+  else{sortCol=col;sortDir='desc';}
+  buildTableHead();run();
+}
+
+const N=(v,digits=0)=>v==null?'<span class="num neu">—</span>':`<span class="num neu">${Number(v).toLocaleString('ko',{maximumFractionDigits:digits})}</span>`;
+const P=(v)=>{if(v==null) return '<span class="num neu">—</span>'; const p=(v*100).toFixed(1); return `<span class="num ${v>0?'pos':v<0?'neg':'neu'}">${p}%</span>`;};
+const SB=(s)=>({반도체:'b-semi',로봇:'b-robot',이차전지:'b-bat'}[s]||'');
+const MB=(m)=>({코스피:'b-kospi',코스닥:'b-kosdaq'}[m]||'b-etc');
+
+function cellFor(col, d, i){
+  switch(col.key){
+    case '#': return `<td class="left"><span class="num neu">${i+1}</span></td>`;
+    case '산업분류': return `<td class="left"><span class="badge ${SB(d['산업분류'])}">${d['산업분류']||'—'}</span></td>`;
+    case '종목명': return `<td class="left"><span class="td-name" title="${d['종목명']||''}">${d['종목명']||'—'}</span><span class="td-code">${d['업체코드']||''}</span></td>`;
+    case '시장구분': return `<td class="left"><span class="badge ${MB(d['시장구분'])}">${d['시장구분']||'—'}</span></td>`;
+    case '매출성장률': return `<td>${P(d['매출성장률'])}</td>`;
+    case '24OPM': case '23OPM': case '22OPM': case '25OPM': return `<td>${P(d[col.key])}</td>`;
+    case '24부채비율': case '23부채비율': case '22부채비율': case '25부채비율': return `<td>${P(d[col.key])}</td>`;
+    case '24순이익률': return `<td>${P(d['24순이익률'])}</td>`;
+    case '소속기업집단': return `<td><span class="num neu" style="font-size:11px">${d['소속기업집단']||'—'}</span></td>`;
+    default: return `<td>${N(d[col.key])}</td>`;
+  }
+}
+
+function renderTable(){
+  const vis=TABLE_COLS.filter(c=>c.visible);
+  const body=document.getElementById('tbody');
+  const es=document.getElementById('emptyState');
+  if(!filtered.length){body.innerHTML='';es.style.display='flex';return;}
+  es.style.display='none';
+  body.innerHTML=filtered.map((d,i)=>`<tr onclick="openDetail(${i})">${vis.map(c=>cellFor(c,d,i)).join('')}</tr>`).join('');
+}
+
+// ══════════════════════════════════════════════
+// ACTIVE TAGS
+// ══════════════════════════════════════════════
+function renderActiveTags(){
+  const el=document.getElementById('activeTags');
+  const tags=[];
+
+  S.active.forEach(a=>{
+    const def=CATALOG.find(c=>c.id===a.catId);
+    if(!def) return;
+    if(def.type==='range'){
+      const min=a.minVal!==''?a.minVal:null, max=a.maxVal!==''?a.maxVal:null;
+      if(min!=null||max!=null){
+        const txt=`${def.name}: ${min??''}~${max??''}${def.unit??' '}`;
+        tags.push({txt, remove:()=>{a.minVal='';a.maxVal='';renderDynFilters();run();}});
+      }
+    } else if((def.type==='toggle'||def.type==='toggle_multi')&&a.togVal){
+      tags.push({txt:def.name, remove:()=>{a.togVal=false;renderDynFilters();run();}});
+    }
+  });
+
+  el.innerHTML = tags.length
+    ? tags.map((t,i)=>`<span class="atag">${esc(t.txt)}<button onclick="tagRemove(${i})">×</button></span>`).join('')
+    : '<span class="atag-empty">적용된 조건 없음</span>';
+  window._tagActions=tags.map(t=>t.remove);
+}
+window.tagRemove=i=>{if(window._tagActions?.[i]) window._tagActions[i]();};
+
+// ══════════════════════════════════════════════
+// DETAIL PANEL (inline — reuse old logic)
+// ══════════════════════════════════════════════
+let detailPanel=null;
+function openDetail(idx){
+  const d=filtered[idx];
+  if(!d) return;
+  if(!detailPanel){
+    detailPanel=document.createElement('div');
+    detailPanel.style.cssText='position:fixed;right:0;top:0;width:370px;height:100vh;background:var(--surface);border-left:1px solid var(--border);z-index:100;overflow-y:auto;transform:translateX(100%);transition:transform .25s;';
+    document.body.appendChild(detailPanel);
+  }
+  const fN=v=>v!=null?Math.round(v).toLocaleString():'—';
+  const fP=v=>v!=null?`${(v*100).toFixed(1)}%`:'—';
+  const revMax=Math.max(d['22매출']||0,d['23매출']||0,d['24매출']||0)||1;
+  const opMax=Math.max(Math.abs(d['22영업이익']||0),Math.abs(d['23영업이익']||0),Math.abs(d['24영업이익']||0))||1;
+  const trow=(yr,rev,op)=>{
+    const rw=rev!=null?Math.max(2,rev/revMax*100):0;
+    const ow=op!=null?Math.max(2,Math.abs(op)/opMax*100):0;
+    const oc=op!=null&&op<0?'#ef4444':'#3b82f6';
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);">
+      <span style="font-family:var(--mono);font-size:11px;color:var(--text3);width:36px">${yr}</span>
+      <div style="flex:1;display:flex;flex-direction:column;gap:3px">
+        <div style="display:flex;align-items:center;gap:6px"><div style="flex:1;height:5px;background:var(--border);border-radius:2px;overflow:hidden"><div style="width:${rw}%;height:100%;background:#22c55e;border-radius:2px"></div></div><span style="font-family:var(--mono);font-size:10px;color:var(--text2);width:80px;text-align:right">${fN(rev)}</span></div>
+        <div style="display:flex;align-items:center;gap:6px"><div style="flex:1;height:5px;background:var(--border);border-radius:2px;overflow:hidden"><div style="width:${ow}%;height:100%;background:${oc};border-radius:2px"></div></div><span style="font-family:var(--mono);font-size:10px;color:${op!=null&&op<0?'#ef4444':'var(--text2)'};width:80px;text-align:right">${fN(op)}</span></div>
+      </div></div>`;
+  };
+  const item=(label,val,color='')=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;"><div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:2px">${label}</div><div style="font-size:13px;font-weight:600;font-family:var(--mono);color:${color||'var(--text)'}">${val}</div></div>`;
+  detailPanel.innerHTML=`
+    <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start">
+      <div><div style="font-size:15px;font-weight:700">${esc(d['종목명']||'—')}</div><div style="font-size:11px;color:var(--text3);font-family:var(--mono);margin-top:2px">${d['업체코드']||''} · ${d['산업분류']||''} · ${d['시장구분']||''}</div></div>
+      <button onclick="closeDetail()" style="margin-left:auto;background:none;border:none;color:var(--text3);font-size:18px;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+      <div style="font-size:10px;font-family:var(--mono);color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">기본 정보</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        ${item('대표자',esc(d['대표자']||'—'))}${item('기업집단',esc(d['소속기업집단']||'독립'))}
+        <div style="grid-column:1/-1;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 10px"><div style="font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:2px">주요 상품</div><div style="font-size:10px;color:var(--text);line-height:1.5">${esc((d['주요상품']||'—').substring(0,120))}</div></div>
+      </div>
+    </div>
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+      <div style="font-size:10px;font-family:var(--mono);color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">📈 매출 · 영업이익 추이</div>
+      ${trow('2022',d['22매출'],d['22영업이익'])}${trow('2023',d['23매출'],d['23영업이익'])}${trow('2024',d['24매출'],d['24영업이익'])}${d['25매출']!=null?trow('2025',d['25매출'],d['25영업이익']):''}
+    </div>
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border)">
+      <div style="font-size:10px;font-family:var(--mono);color:var(--text3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">💰 핵심 지표</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+        ${item('24 OPM',fP(d['24OPM']),(d['24OPM']||0)>0?'#22c55e':'#ef4444')}
+        ${item('25 OPM',fP(d['25OPM']),(d['25OPM']||0)>0?'#22c55e':'#ef4444')}
+        ${item('24 EBITDA',fN(d['24EBITDA']))}${item('부채비율',fP(d['24부채비율']),(d['24부채비율']||0)>2?'#ef4444':'')}
+        ${item('24 자산',fN(d['24자산']))}${item('24 자본',fN(d['24자본']))}
+        ${item('24 순이익',fN(d['24순이익']))}${item('성장률(22→24)',fP(d['매출성장률']),(d['매출성장률']||0)>0?'#22c55e':'#ef4444')}
+      </div>
+    </div>`;
+  detailPanel.style.transform='translateX(0)';
+}
+function closeDetail(){if(detailPanel) detailPanel.style.transform='translateX(100%)';}
+
+// ══════════════════════════════════════════════
+// MODALS
+// ══════════════════════════════════════════════
+function openModal(name){
+  document.getElementById('modal-'+name).classList.add('open');
+  if(name==='filter-picker'){document.getElementById('fp-q').value='';renderPicker();}
+  if(name==='preset-save'){document.getElementById('save-preview').textContent=descFilters();document.getElementById('preset-name-input').value='';setTimeout(()=>document.getElementById('preset-name-input').focus(),100);}
+  if(name==='preset-load') renderPresetList();
+}
+function closeModal(name){document.getElementById('modal-'+name).classList.remove('open');}
+document.querySelectorAll('.modal-overlay').forEach(el=>{el.addEventListener('click',e=>{if(e.target===el) el.classList.remove('open');});});
+
+// ══════════════════════════════════════════════
+// PRESETS
+// ══════════════════════════════════════════════
+const PK='corpscreen_v2';
+function getPresets(){try{return JSON.parse(localStorage.getItem(PK)||'[]');}catch{return [];}}
+function setPresets(l){localStorage.setItem(PK,JSON.stringify(l));}
+
+function captureState(){
+  return {
+    sectors:[...S.sectors], markets:[...S.markets], excls:[...S.excls],
+    active: S.active.map(a=>({...a}))
+  };
+}
+function applyState(st){
+  S.sectors=new Set(st.sectors||[]); S.markets=new Set(st.markets||[]); S.excls=new Set(st.excls||[]);
+  document.querySelectorAll('[data-f="sector"]').forEach(b=>b.classList.toggle('on',S.sectors.has(b.dataset.v)));
+  document.querySelectorAll('[data-f="market"]').forEach(b=>b.classList.toggle('on',S.markets.has(b.dataset.v)));
+  document.querySelectorAll('[data-f="excl"]').forEach(b=>b.classList.toggle('excl-on',S.excls.has(b.dataset.v)));
+  S.active=(st.active||[]).filter(a=>CATALOG.find(c=>c.id===a.catId));
+  renderDynFilters();run();
+}
+
+function descFilters(){
+  const lines=[];
+  if(S.sectors.size<3) lines.push('분류: '+[...S.sectors].join(', '));
+  const allMkt=['코스피','코스닥','외감','K-OTC','코넥스'];
+  if(S.markets.size<allMkt.length) lines.push('시장: '+[...S.markets].join(', '));
+  if(S.excls.size) lines.push('제외: '+[...S.excls].join(', '));
+  S.active.forEach(a=>{
+    const def=CATALOG.find(c=>c.id===a.catId);
+    if(!def) return;
+    if(def.type==='range'){
+      const parts=[];
+      if(a.minVal!=='') parts.push(`≥ ${a.minVal}${def.pct?'%':''}`);
+      if(a.maxVal!=='') parts.push(`≤ ${a.maxVal}${def.pct?'%':''}`);
+      if(parts.length) lines.push(`${def.name}: ${parts.join(', ')}`);
+    } else if(a.togVal) lines.push(def.name+': ON');
+  });
+  return lines.length?lines.join('\n'):'(조건 없음 — 전체 기업)';
+}
+
+function doSavePreset(){
+  const name=document.getElementById('preset-name-input').value.trim();
+  if(!name){document.getElementById('preset-name-input').style.borderColor='var(--red)';return;}
+  const l=getPresets();
+  l.unshift({name, state:captureState(), desc:descFilters(), at:new Date().toLocaleDateString('ko-KR')});
+  setPresets(l); closeModal('preset-save'); toast(`"${name}" 저장 완료`);
+}
+
+function renderPresetList(){
+  const l=getPresets(), el=document.getElementById('preset-list');
+  if(!l.length){el.innerHTML='<div style="padding:30px;text-align:center;color:var(--text3);font-size:12px;font-family:var(--mono);">저장된 프리셋이 없습니다<br><br>필터 설정 후 💾 저장을 눌러보세요</div>';return;}
+  el.innerHTML=l.map((p,i)=>`
+    <div class="preset-card">
+      <div class="preset-card-name">${esc(p.name)} <span style="font-size:10px;color:var(--text3);font-weight:400;font-family:var(--mono)">${p.at||''}</span></div>
+      <div class="preset-card-desc">${esc(p.desc||'')}</div>
+      <div class="preset-card-row">
+        <button class="btn btn-primary" style="flex:1;padding:6px" onclick="loadPreset(${i})">불러오기</button>
+        <button class="btn btn-ghost" style="padding:6px 10px;color:var(--red);border-color:rgba(239,68,68,.3)" onclick="delPreset(${i})">삭제</button>
+      </div>
+    </div>`).join('');
+}
+
+function loadPreset(i){const l=getPresets();if(!l[i])return;applyState(l[i].state);closeModal('preset-load');toast(`"${l[i].name}" 불러오기 완료`);}
+function delPreset(i){const l=getPresets();const n=l[i]?.name;l.splice(i,1);setPresets(l);renderPresetList();toast(`"${n}" 삭제됨`);}
+
+// ══════════════════════════════════════════════
+// RESET
+// ══════════════════════════════════════════════
+function resetAll(){
+  S.sectors=new Set(['반도체','로봇','이차전지']);
+  S.markets=new Set(['코스피','코스닥','외감','K-OTC','코넥스']);
+  S.excls=new Set(['대기업','유한회사','외국계','FI 투자 유치 이력']);
+  document.querySelectorAll('[data-f="sector"]').forEach(b=>b.classList.add('on'));
+  document.querySelectorAll('[data-f="market"]').forEach(b=>b.classList.add('on'));
+  document.querySelectorAll('[data-f="excl"]').forEach(b=>b.classList.add('excl-on'));
+  S.active=[];
+  renderDynFilters();run();
+}
+
+// ══════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.opacity='1';clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity='0',2200);}
+
+init();
+</script>
+</body>
+</html>
