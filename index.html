@@ -488,9 +488,7 @@ const DEFAULT_COLS = JSON.parse(JSON.stringify(TABLE_COLS));
 // DATA LOADING
 // ══════════════════════════════════════════════
 const URLS = {
-  basic:   'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4303QD_6y5KNMYEicJpAYK60qzPpMjwrWJO9pbUygK3kDHUzzmGuZCOdnHqI1o8wFk3Hhde6u_biD/pub?gid=1204067738&single=true&output=csv',
-  finance: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4303QD_6y5KNMYEicJpAYK60qzPpMjwrWJO9pbUygK3kDHUzzmGuZCOdnHqI1o8wFk3Hhde6u_biD/pub?gid=217449903&single=true&output=csv',
-  summary: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4303QD_6y5KNMYEicJpAYK60qzPpMjwrWJO9pbUygK3kDHUzzmGuZCOdnHqI1o8wFk3Hhde6u_biD/pub?gid=140342369&single=true&output=csv',
+  summary: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4303QD_6y5KNMYEicJpAYK60qzPpMjwrWJO9pbUygK3kDHUzzmGuZCOdnHqI1o8wFk3Hhde6u_biD/pub?gid=463991284&single=true&output=csv',
 };
 
 function parseCSV(text){
@@ -506,61 +504,60 @@ async function loadData(){
   document.getElementById('footerTxt').textContent='⏳ 구글 시트에서 데이터 불러오는 중...';
   document.getElementById('rcnt').textContent='…';
   try{
-    const [sumRes,basicRes,finRes]=await Promise.all([fetch(URLS.summary),fetch(URLS.basic),fetch(URLS.finance)]);
-    const [sumText,basicText,finText]=await Promise.all([sumRes.text(),basicRes.text(),finRes.text()]);
-    const sumRows=parseCSV(sumText); const finRows=parseCSV(finText);
-    const finMap={};finRows.forEach(r=>{const code=r['업체코드']||r[Object.keys(r)[1]];if(code)finMap[code]=r;});
-    const firstRow=sumRows[0]||{}; const keys=Object.keys(firstRow);
+    const res = await fetch(URLS.summary);
+    const text = await res.text();
+    const rows = parseCSV(text);
+    if(rows.length>0) console.log('컬럼 목록:', Object.keys(rows[0]));
     const parsed=[];
-    sumRows.forEach(r=>{
-      const code=r['업체코드']||r[keys[1]];
-      if(!code||code==='업체코드'||code==='key 값'||code==='975')return;
+    rows.forEach(r=>{
+      const keys=Object.keys(r);
+      const code=r['업체코드']||r['업체 코드']||r[keys[1]]||'';
+      if(!code||code==='업체코드'||code==='key 값') return;
       const sector=r['산업분류']||r[keys[0]]||'';
-      if(!['반도체','로봇','이차전지'].includes(sector))return;
+      if(!['반도체','로봇','이차전지'].includes(sector)) return;
       const n=key=>toNum(r[key]);
-      const fin=finMap[code]||{}; const finKeys=Object.keys(fin);
-      const findFin=keyword=>{const k=finKeys.find(k=>k.includes(keyword));return k?toNum(fin[k]):null;};
-      const rev25=findFin('2025/Annual S21000.수익')??findFin('2025')??null;
-      const op25=findFin('2025/Annual S25000')??null;
-      const ni22=findFin('2022/Annual S29000')??null; const ni23=findFin('2023/Annual S29000')??null;
-      const ni24=findFin('2024/Annual S29000')??null; const ni25=findFin('2025/Annual S29000')??null;
-      const eb25=findFin('2025/Annual S29700')??null;
-      const ast22=findFin('2022/Annual S15000')??null; const ast23=findFin('2023/Annual S15000')??null; const ast25=findFin('2025/Annual S15000')??null;
-      const eq22=findFin('2022/Annual S18900')??null; const eq23=findFin('2023/Annual S18900')??null; const eq25=findFin('2025/Annual S18900')??null;
-      const dbt22=findFin('2022/Annual S18000')??null; const dbt23=findFin('2023/Annual S18000')??null; const dbt25=findFin('2025/Annual S18000')??null;
-      const rev22v=n('22매출'),rev23v=n('23매출'),rev24v=n('24매출');
-      const op22v=n('22영업이익'),op23v=n('23영업이익'),op24v=n('24영업이익');
-      const eb22v=n('22EBITDA'),eb23v=n('23EBITDA'),eb24v=n('24EBITDA');
-      const opm24v=n('24OPM'),opm23v=n('23OPM'),opm22v=n('22OPM');
-      const opm25v=(op25!=null&&rev25!=null&&rev25!==0)?op25/rev25:null;
-      const debtR24=n('24부채비율');
-      const debtR22=(dbt22!=null&&eq22!=null&&eq22!==0)?dbt22/eq22:null;
-      const debtR23=(dbt23!=null&&eq23!=null&&eq23!==0)?dbt23/eq23:null;
-      const debtR25=(dbt25!=null&&eq25!=null&&eq25!==0)?dbt25/eq25:null;
+      const market=r['시장구분']||r['691035.시장구분']||r['시장 구분']||'';
+      const ceo=r['대표자']||r['691010.대표자']||'';
+      const grp=r['소속기업집단']||r['691280.소속기업집단']||'';
+      const excl=r['제외대상']||r['제외대상(수기)']||'';
+      const prod=r['주요상품']||r['691230.주요상품']||'';
+      const ksic1=r['KSIC소분류']||r['691430.KSIC-소분류(11차)']||'';
+      const ksic2=r['KSIC세분류']||r['691440.KSIC-세분류(11차)']||'';
+      const name=r['종목명']||r[keys[2]]||'';
+      const rev22v=n('22매출'),rev23v=n('23매출'),rev24v=n('24매출'),rev25v=n('25매출');
+      const op22v=n('22영업이익'),op23v=n('23영업이익'),op24v=n('24영업이익'),op25v=n('25영업이익');
+      const eb22v=n('22EBITDA'),eb23v=n('23EBITDA'),eb24v=n('24EBITDA'),eb25v=n('25EBITDA');
+      const ni22v=n('22순이익'),ni23v=n('23순이익'),ni24v=n('24순이익'),ni25v=n('25순이익');
+      const opm22v=n('22OPM'),opm23v=n('23OPM'),opm24v=n('24OPM'),opm25v=n('25OPM');
+      const debtR22=n('22부채비율'),debtR23=n('23부채비율'),debtR24=n('24부채비율'),debtR25=n('25부채비율');
+      const ast22=n('22자산'),ast23=n('23자산'),ast24=n('24자산'),ast25=n('25자산');
+      const eq22=n('22자본'),eq23=n('23자본'),eq24=n('24자본'),eq25=n('25자본');
+      const dbt22=n('22부채'),dbt23=n('23부채'),dbt24=n('24부채'),dbt25=n('25부채');
+      const avgRev=n('AVG매출')??n('AVG(매출)');
+      const avgOp=n('AVG영업이익')??n('AVG(영업이익)');
+      const avgEb=n('AVG_EBITDA')??n('AVG(EBITDA)');
       const growth=(rev24v!=null&&rev22v!=null&&rev22v!==0)?(rev24v-rev22v)/Math.abs(rev22v):null;
-      const nim24=(ni24!=null&&rev24v!=null&&rev24v!==0)?ni24/rev24v:null;
-      const nim23=(ni23!=null&&rev23v!=null&&rev23v!==0)?ni23/rev23v:null;
+      const nim24=(ni24v!=null&&rev24v!=null&&rev24v!==0)?ni24v/rev24v:null;
+      const nim23=(ni23v!=null&&rev23v!=null&&rev23v!==0)?ni23v/rev23v:null;
       parsed.push({
-        '산업분류':sector,'업체코드':code,'종목명':r['종목명']||r[keys[2]]||'',
-        '대표자':r['691010.대표자']||'','시장구분':r['691035.시장구분']||r['시장구분']||'',
-        '소속기업집단':r['691280.소속기업집단']||r['소속기업집단']||'',
-        '제외대상':r['제외대상(수기)']||r['제외대상']||'',
-        '주요상품':r['691230.주요상품']||r['주요상품']||'',
-        'KSIC소분류':r['691430.KSIC-소분류(11차)']||'','KSIC세분류':r['691440.KSIC-세분류(11차)']||'',
-        '22매출':rev22v,'23매출':rev23v,'24매출':rev24v,'25매출':rev25,'AVG매출':n('AVG(매출)'),
-        '22영업이익':op22v,'23영업이익':op23v,'24영업이익':op24v,'25영업이익':op25,'AVG영업이익':n('AVG(영업이익)'),
-        '22EBITDA':eb22v,'23EBITDA':eb23v,'24EBITDA':eb24v,'25EBITDA':eb25,'AVG_EBITDA':n('AVG(EBITDA'),
-        '24자산':n('24자산'),'24부채':n('24부채'),'24자본':n('24자본'),
-        '22자산':ast22,'23자산':ast23,'25자산':ast25,
-        '22자본':eq22,'23자본':eq23,'25자본':eq25,
-        '22부채':dbt22,'23부채':dbt23,'25부채':dbt25,
+        '산업분류':sector,'업체코드':code,'종목명':name,
+        '대표자':ceo,'시장구분':market,'소속기업집단':grp,
+        '제외대상':excl,'주요상품':prod,'KSIC소분류':ksic1,'KSIC세분류':ksic2,
+        '22매출':rev22v,'23매출':rev23v,'24매출':rev24v,'25매출':rev25v,'AVG매출':avgRev,
+        '22영업이익':op22v,'23영업이익':op23v,'24영업이익':op24v,'25영업이익':op25v,'AVG영업이익':avgOp,
+        '22EBITDA':eb22v,'23EBITDA':eb23v,'24EBITDA':eb24v,'25EBITDA':eb25v,'AVG_EBITDA':avgEb,
+        '22자산':ast22,'23자산':ast23,'24자산':ast24,'25자산':ast25,
+        '22자본':eq22,'23자본':eq23,'24자본':eq24,'25자본':eq25,
+        '22부채':dbt22,'23부채':dbt23,'24부채':dbt24,'25부채':dbt25,
         '22OPM':opm22v,'23OPM':opm23v,'24OPM':opm24v,'25OPM':opm25v,
         '22부채비율':debtR22,'23부채비율':debtR23,'24부채비율':debtR24,'25부채비율':debtR25,
-        '매출성장률':growth,'22순이익':ni22,'23순이익':ni23,'24순이익':ni24,'25순이익':ni25,
+        '매출성장률':growth,
+        '22순이익':ni22v,'23순이익':ni23v,'24순이익':ni24v,'25순이익':ni25v,
         '24순이익률':nim24,'23순이익률':nim23,
       });
     });
     RAW=parsed;
+    console.log('로드 완료:', RAW.length, '개');
     buildTableHead(); run();
     document.getElementById('rcnt').textContent=RAW.length.toLocaleString();
   }catch(e){
@@ -1099,4 +1096,4 @@ document.head.appendChild(styleEl);
 loadData();
 </script>
 </body>
-</ht
+</html>
